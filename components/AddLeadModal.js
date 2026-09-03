@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  CONVERSATION_STAGE_OPTIONS,
   LEAD_QUALITY_OPTIONS,
   LEAD_QUALITY_CUSTOM,
   PLATFORM_OPTIONS,
@@ -10,6 +11,7 @@ import {
   STATUS_OPTIONS,
   statusOptionsFor,
 } from "@/lib/constants";
+import { STAGE_COLOR } from "@/lib/badgeColors";
 
 function todayLocal() {
   const d = new Date();
@@ -34,6 +36,7 @@ function fileToBase64(file) {
 
 const emptyForm = {
   identified: "",
+  adId: "",
   platform: "",
   description: "",
   descriptionSource: "manual",
@@ -47,14 +50,45 @@ const emptyForm = {
   quote: "",
   status: STATUS_OPTIONS[0],
   statusCustom: "",
+  followUpMessage: "",
+  highPriority: false,
+  conversationStage: CONVERSATION_STAGE_OPTIONS[0],
 };
 
-export default function AddLeadModal({ onClose, onCreated }) {
-  const [form, setForm] = useState(() => ({
-    ...emptyForm,
-    leadDate: todayLocal(),
-    lastMessageDate: todayLocal(),
-  }));
+function formFromLead(lead) {
+  return {
+    identified: lead.identified || "",
+    adId: lead.adId || "",
+    platform: lead.platform || "",
+    description: lead.description || "",
+    descriptionSource: lead.descriptionSource || "manual",
+    leadQuality: lead.leadQuality || LEAD_QUALITY_OPTIONS[0],
+    leadQualityCustom: lead.leadQualityCustom || "",
+    leadDate: lead.leadDate || todayLocal(),
+    lastMessageDate: lead.lastMessageDate || todayLocal(),
+    product: lead.product || PRODUCT_OPTIONS[0],
+    productCustom: lead.productCustom || "",
+    isNatural: !!lead.isNatural,
+    quote: lead.quote != null ? String(lead.quote) : "",
+    status: lead.status || STATUS_OPTIONS[0],
+    statusCustom: lead.statusCustom || "",
+    followUpMessage: lead.followUpMessage || "",
+    highPriority: !!lead.highPriority,
+    conversationStage: lead.conversationStage || CONVERSATION_STAGE_OPTIONS[0],
+  };
+}
+
+// Same form is used both to create a new lead (no `lead` prop, POSTs and
+// calls onCreated) and as the "detailed edit" view for an existing lead
+// (pass `lead` + `onUpdate` — the same update function the inline row edit
+// uses, so both paths go through identical persistence logic).
+export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
+  const isEdit = !!lead;
+  const [form, setForm] = useState(() =>
+    isEdit
+      ? formFromLead(lead)
+      : { ...emptyForm, leadDate: todayLocal(), lastMessageDate: todayLocal() }
+  );
   const [pastedText, setPastedText] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -66,10 +100,13 @@ export default function AddLeadModal({ onClose, onCreated }) {
   const [submitError, setSubmitError] = useState(null);
   const dupTimer = useRef(null);
   const dateTouched = useRef(false);
+  const lastMessageDateTouched = useRef(false);
+  const leadQualityTouched = useRef(false);
   const productTouched = useRef(false);
   const isNaturalTouched = useRef(false);
   const statusTouched = useRef(false);
   const quoteTouched = useRef(false);
+  const stageTouched = useRef(false);
 
   useEffect(() => {
     return () => clearTimeout(dupTimer.current);
@@ -93,7 +130,7 @@ export default function AddLeadModal({ onClose, onCreated }) {
           `/api/leads/check?identified=${encodeURIComponent(value.trim())}`
         );
         const data = await res.json();
-        setDupMatches(data.leads || []);
+        setDupMatches((data.leads || []).filter((l) => l.id !== lead?.id));
       } catch {
         // non-critical
       } finally {
@@ -163,7 +200,15 @@ export default function AddLeadModal({ onClose, onCreated }) {
         description: data.description || f.description,
         descriptionSource: "gemini",
         leadDate: !dateTouched.current && data.suggestedDate ? data.suggestedDate : f.leadDate,
+        lastMessageDate:
+          !lastMessageDateTouched.current && data.suggestedLastMessageDate
+            ? data.suggestedLastMessageDate
+            : f.lastMessageDate,
         identified: !f.identified.trim() && data.suggestedIdentified ? data.suggestedIdentified : f.identified,
+        leadQuality:
+          !leadQualityTouched.current && data.suggestedLeadQuality
+            ? data.suggestedLeadQuality
+            : f.leadQuality,
         product:
           !productTouched.current && data.suggestedProduct
             ? data.suggestedProduct
@@ -178,6 +223,10 @@ export default function AddLeadModal({ onClose, onCreated }) {
           !quoteTouched.current && data.suggestedQuote != null
             ? String(data.suggestedQuote)
             : f.quote,
+        conversationStage:
+          !stageTouched.current && data.suggestedConversationStage
+            ? data.suggestedConversationStage
+            : f.conversationStage,
       }));
       if (!form.identified.trim() && data.suggestedIdentified) {
         handleIdentifiedChange(data.suggestedIdentified);
@@ -204,14 +253,19 @@ export default function AddLeadModal({ onClose, onCreated }) {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create lead");
-      onCreated(data.lead);
+      if (isEdit) {
+        await onUpdate(lead.id, form);
+        onClose();
+      } else {
+        const res = await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to create lead");
+        onCreated(data.lead);
+      }
     } catch (err) {
       setSubmitError(err.message);
     } finally {
@@ -223,7 +277,7 @@ export default function AddLeadModal({ onClose, onCreated }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8">
       <div className="w-full max-w-2xl rounded-xl border border-line bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h2 className="text-lg font-semibold text-ink">New Lead</h2>
+          <h2 className="text-lg font-semibold text-ink">{isEdit ? "Edit Lead" : "New Lead"}</h2>
           <button
             onClick={onClose}
             className="rounded-md px-2 py-1 text-ink-soft hover:bg-surface2"
@@ -262,6 +316,19 @@ export default function AddLeadModal({ onClose, onCreated }) {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Ad ID */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-ink">
+              Ad ID <span className="text-ink-mute">(optional)</span>
+            </label>
+            <input
+              value={form.adId}
+              onChange={(e) => set("adId", e.target.value)}
+              className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
+              placeholder="Meta/Instagram ad ID this lead came from"
+            />
           </div>
 
           {/* Platform */}
@@ -356,7 +423,10 @@ export default function AddLeadModal({ onClose, onCreated }) {
               <input
                 type="date"
                 value={form.lastMessageDate}
-                onChange={(e) => set("lastMessageDate", e.target.value)}
+                onChange={(e) => {
+                  lastMessageDateTouched.current = true;
+                  set("lastMessageDate", e.target.value);
+                }}
                 className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
               />
             </div>
@@ -365,6 +435,7 @@ export default function AddLeadModal({ onClose, onCreated }) {
               <select
                 value={form.leadQuality}
                 onChange={(e) => {
+                  leadQualityTouched.current = true;
                   const quality = e.target.value;
                   setForm((f) => {
                     const validStatuses = statusOptionsFor(quality);
@@ -476,6 +547,64 @@ export default function AddLeadModal({ onClose, onCreated }) {
             </div>
           </div>
 
+          {/* Conversation Stage */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-ink">Conversation Stage</label>
+            <div className="flex flex-wrap gap-2">
+              {CONVERSATION_STAGE_OPTIONS.map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => {
+                    stageTouched.current = true;
+                    set("conversationStage", s);
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                    form.conversationStage === s
+                      ? "border-brand bg-brand text-white"
+                      : "border-line-strong text-ink-soft hover:bg-surface2"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-ink-mute">
+              Defaults to First Message — bump it up if the conversation has already gone
+              further. Shown on its own page under{" "}
+              <span className={`rounded-full px-1.5 py-0.5 font-medium ${STAGE_COLOR[form.conversationStage] || ""}`}>
+                {form.conversationStage}
+              </span>
+              , not on the main leads list.
+            </p>
+          </div>
+
+          {/* Next Follow-up Message */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-ink">
+              Next Follow-up Message <span className="text-ink-mute">(optional)</span>
+            </label>
+            <textarea
+              value={form.followUpMessage}
+              onChange={(e) => set("followUpMessage", e.target.value)}
+              rows={3}
+              placeholder="Draft what you'll send this lead next, if you already know…"
+              className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
+            />
+            <p className="mt-1 text-xs text-ink-mute">
+              Only shown on the Follow-up page, not here.
+            </p>
+            <label className="mt-2 flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={form.highPriority}
+                onChange={(e) => set("highPriority", e.target.checked)}
+                className="h-4 w-4 accent-red-600"
+              />
+              High priority — pin to the top of the Follow-up page
+            </label>
+          </div>
+
           {submitError && <p className="text-sm text-red-600">{submitError}</p>}
 
           <div className="flex justify-end gap-2 border-t border-line pt-4">
@@ -491,7 +620,13 @@ export default function AddLeadModal({ onClose, onCreated }) {
               disabled={submitting}
               className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong disabled:opacity-50"
             >
-              {submitting ? "Adding…" : "Add Lead"}
+              {isEdit
+                ? submitting
+                  ? "Saving…"
+                  : "Save Changes"
+                : submitting
+                  ? "Adding…"
+                  : "Add Lead"}
             </button>
           </div>
         </form>

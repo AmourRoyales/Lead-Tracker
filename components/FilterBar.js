@@ -6,10 +6,15 @@ import {
   PRODUCT_OPTIONS,
   STATUS_OPTIONS,
 } from "@/lib/constants";
+import { EMPTY_FILTERS, useFilters } from "@/lib/FilterContext";
 
-export default function FilterBar({ filters, onChange, onAddLead }) {
+// Filters live in shared context (see FilterContext) so a filter set on one
+// page — e.g. Platform — stays applied when you navigate to another page.
+export default function FilterBar({ onAddLead }) {
+  const { filters, setFilters } = useFilters();
+
   function set(key, value) {
-    onChange({ ...filters, [key]: value });
+    setFilters((f) => ({ ...f, [key]: value }));
   }
 
   return (
@@ -115,30 +120,21 @@ export default function FilterBar({ filters, onChange, onAddLead }) {
 
       <button
         type="button"
-        onClick={() =>
-          onChange({
-            status: "",
-            leadQuality: "",
-            product: "",
-            platform: "",
-            naturalOnly: false,
-            dateFrom: "",
-            dateTo: "",
-            search: "",
-          })
-        }
+        onClick={() => setFilters(EMPTY_FILTERS)}
         className="rounded-md px-2 py-1.5 text-xs text-ink-soft hover:bg-surface2"
       >
         Clear filters
       </button>
 
-      <button
-        type="button"
-        onClick={onAddLead}
-        className="ml-auto rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
-      >
-        + New Lead
-      </button>
+      {onAddLead && (
+        <button
+          type="button"
+          onClick={onAddLead}
+          className="ml-auto rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong"
+        >
+          + New Lead
+        </button>
+      )}
     </div>
   );
 }
