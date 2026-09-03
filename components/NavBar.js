@@ -8,15 +8,19 @@ const LINKS = [
   { href: "/good_leads", label: "Good Leads" },
   { href: "/order", label: "Order" },
   { href: "/follow-up", label: "Follow-up" },
+  { href: "/first-message", label: "First Message" },
+  { href: "/second-message", label: "Second Message" },
+  { href: "/quality-leads", label: "Quality Leads" },
+  { href: "/interested", label: "Interested" },
 ];
 
 export default function NavBar() {
   const pathname = usePathname();
 
   return (
-    <header className="flex items-center gap-1 border-b border-line bg-surface px-4 py-3">
+    <header className="flex flex-wrap items-center gap-1 border-b border-line bg-surface px-4 py-3">
       <h1 className="mr-4 text-lg font-semibold text-ink">Jeni Diam · Lead Tracker</h1>
-      <nav className="flex items-center gap-1">
+      <nav className="flex flex-wrap items-center gap-1">
         {LINKS.map((link) => (
           <Link
             key={link.href}

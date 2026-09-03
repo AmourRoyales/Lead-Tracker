@@ -2,14 +2,17 @@
 
 import { useMemo } from "react";
 import NavBar from "@/components/NavBar";
+import FilterBar from "@/components/FilterBar";
 import LeadTable from "@/components/LeadTable";
 import { useLeads } from "@/lib/useLeads";
+import { useFilters } from "@/lib/FilterContext";
 import { daysSinceIST } from "@/lib/date";
 
 const URGENT_AFTER_DAYS = 3;
 
 export default function OrderPage() {
-  const { leads, loading, error, updateLead, removeLead } = useLeads({});
+  const { filters } = useFilters();
+  const { leads, loading, error, updateLead, removeLead } = useLeads(filters);
 
   const { quotePending, urgentFollowUps } = useMemo(() => {
     const quotePending = leads.filter((l) => l.quote == null);
@@ -24,6 +27,7 @@ export default function OrderPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <NavBar />
+      <FilterBar />
 
       {error && <p className="px-4 py-2 text-sm text-red-600">{error}</p>}
       {loading ? (

@@ -5,6 +5,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const filters = {
     status: searchParams.get("status") || undefined,
+    conversationStage: searchParams.get("conversationStage") || undefined,
     leadQuality: searchParams.get("leadQuality") || undefined,
     qualities: searchParams.get("qualities") || undefined,
     product: searchParams.get("product") || undefined,

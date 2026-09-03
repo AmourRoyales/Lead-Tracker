@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  CONVERSATION_STAGE_OPTIONS,
   HIGH_PRIORITY_STATUSES,
   LEAD_QUALITY_CUSTOM,
   LEAD_QUALITY_OPTIONS,
@@ -12,7 +13,8 @@ import {
   statusOptionsFor,
 } from "@/lib/constants";
 import { daysSinceIST, formatDateLabel } from "@/lib/date";
-import { PLATFORM_COLOR, QUALITY_COLOR } from "@/lib/badgeColors";
+import { PLATFORM_COLOR, QUALITY_COLOR, STAGE_COLOR, STATUS_COLOR } from "@/lib/badgeColors";
+import AddLeadModal from "@/components/AddLeadModal";
 
 const cellClass =
   "border-r border-line px-2 py-1.5 align-top last:border-r-0";
@@ -33,8 +35,10 @@ function groupByDate(leads) {
   return groups;
 }
 
-export default function LeadTable({ leads, onUpdate, onDelete }) {
+export default function LeadTable({ leads, onUpdate, onDelete, showStage = false }) {
   const groups = groupByDate(leads);
+  const colCount = showStage ? 10 : 9;
+  const [detailLead, setDetailLead] = useState(null);
 
   if (leads.length === 0) {
     return (
@@ -57,7 +61,8 @@ export default function LeadTable({ leads, onUpdate, onDelete }) {
             <th className={cellClass + " w-28"}>Quote (USD)</th>
             <th className={cellClass + " w-28"}>Last Msg</th>
             <th className={cellClass + " w-44"}>Status</th>
-            <th className={cellClass + " w-10"}></th>
+            {showStage && <th className={cellClass + " w-44"}>Stage</th>}
+            <th className={cellClass + " w-16"}></th>
           </tr>
         </thead>
         <tbody>
@@ -67,19 +72,30 @@ export default function LeadTable({ leads, onUpdate, onDelete }) {
               group={group}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              showStage={showStage}
+              colCount={colCount}
+              onDetailEdit={setDetailLead}
             />
           ))}
         </tbody>
       </table>
+
+      {detailLead && (
+        <AddLeadModal
+          lead={detailLead}
+          onUpdate={onUpdate}
+          onClose={() => setDetailLead(null)}
+        />
+      )}
     </div>
   );
 }
 
-function RowsForDate({ group, onUpdate, onDelete }) {
+function RowsForDate({ group, onUpdate, onDelete, showStage, colCount, onDetailEdit }) {
   return (
     <>
       <tr className="border-b border-line-strong bg-brand/10">
-        <td colSpan={9} className="px-2 py-1.5 text-xs font-semibold text-brand-strong">
+        <td colSpan={colCount} className="px-2 py-1.5 text-xs font-semibold text-brand-strong">
           {formatDateLabel(group.date)}
           <span className="ml-2 font-normal text-ink-mute">
             {group.leads.length} lead{group.leads.length > 1 ? "s" : ""}
@@ -87,9 +103,34 @@ function RowsForDate({ group, onUpdate, onDelete }) {
         </td>
       </tr>
       {group.leads.map((lead) => (
-        <LeadRow key={lead.id} lead={lead} onUpdate={onUpdate} onDelete={onDelete} />
+        <LeadRow
+          key={lead.id}
+          lead={lead}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          showStage={showStage}
+          onDetailEdit={onDetailEdit}
+        />
       ))}
     </>
+  );
+}
+
+function StageCell({ lead, onUpdate }) {
+  const stage = lead.conversationStage || CONVERSATION_STAGE_OPTIONS[0];
+  return (
+    <select
+      value={stage}
+      onChange={(e) => onUpdate(lead.id, { conversationStage: e.target.value })}
+      title="Bump this lead to a different conversation stage"
+      className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${
+        STAGE_COLOR[stage] || "bg-surface2 text-ink-soft"
+      }`}
+    >
+      {CONVERSATION_STAGE_OPTIONS.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+    </select>
   );
 }
 
@@ -201,7 +242,7 @@ function DeleteButton({ lead, onDelete }) {
   );
 }
 
-function LeadRow({ lead, onUpdate, onDelete }) {
+function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
   const [editing, setEditing] = useState(false);
 
   function patch(fields) {
@@ -211,7 +252,14 @@ function LeadRow({ lead, onUpdate, onDelete }) {
   if (!editing) {
     return (
       <tr className="border-b border-line hover:bg-surface2/60">
-        <td className={cellClass}>{lead.identified}</td>
+        <td className={cellClass}>
+          <div>{lead.identified}</div>
+          {lead.adId && (
+            <div className="text-xs text-ink-mute" title="Ad ID">
+              Ad: {lead.adId}
+            </div>
+          )}
+        </td>
 
         <td className={cellClass}>
           {lead.platform ? (
@@ -271,20 +319,38 @@ function LeadRow({ lead, onUpdate, onDelete }) {
             <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-950 dark:text-red-300">
               {statusLabel(lead)}
             </span>
+          ) : STATUS_COLOR[lead.status] ? (
+            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[lead.status]}`}>
+              {statusLabel(lead)}
+            </span>
           ) : (
             statusLabel(lead)
           )}
         </td>
 
+        {showStage && (
+          <td className={cellClass}>
+            <StageCell lead={lead} onUpdate={onUpdate} />
+          </td>
+        )}
+
         <td className={cellClass}>
           <div className="flex items-center gap-1">
             <button
               type="button"
-              title="Edit lead"
+              title="Inline edit"
               onClick={() => setEditing(true)}
               className="rounded px-1.5 py-1 text-ink-mute hover:bg-surface2 hover:text-ink"
             >
               ✎
+            </button>
+            <button
+              type="button"
+              title="Detailed edit (full form)"
+              onClick={() => onDetailEdit(lead)}
+              className="rounded px-1.5 py-1 text-xs font-medium text-ink-mute hover:bg-surface2 hover:text-ink"
+            >
+              Detail
             </button>
             <DeleteButton lead={lead} onDelete={onDelete} />
           </div>
@@ -300,6 +366,12 @@ function LeadRow({ lead, onUpdate, onDelete }) {
           className={inputClass}
           defaultValue={lead.identified}
           onBlur={(e) => e.target.value !== lead.identified && patch({ identified: e.target.value })}
+        />
+        <input
+          className={inputClass}
+          defaultValue={lead.adId || ""}
+          placeholder="Ad ID"
+          onBlur={(e) => e.target.value !== (lead.adId || "") && patch({ adId: e.target.value })}
         />
       </td>
 
@@ -441,6 +513,12 @@ function LeadRow({ lead, onUpdate, onDelete }) {
           />
         )}
       </td>
+
+      {showStage && (
+        <td className={cellClass}>
+          <StageCell lead={lead} onUpdate={onUpdate} />
+        </td>
+      )}
 
       <td className={cellClass}>
         <div className="flex items-center gap-1">

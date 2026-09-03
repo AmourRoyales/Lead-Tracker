@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import NavBar from "@/components/NavBar";
+import FilterBar from "@/components/FilterBar";
 import { DescriptionCell, lastMessageInfo } from "@/components/LeadTable";
 import { useLeads } from "@/lib/useLeads";
+import { useFilters } from "@/lib/FilterContext";
 import { todayIST } from "@/lib/date";
 import { PLATFORM_COLOR, QUALITY_COLOR } from "@/lib/badgeColors";
 import { LEAD_QUALITY_OPTIONS } from "@/lib/constants";
@@ -20,24 +22,28 @@ function qualityGroupLabel(quality) {
 }
 
 export default function FollowUpPage() {
-  const { leads, loading, error, updateLead } = useLeads({});
+  const { filters } = useFilters();
+  const { leads, loading, error, updateLead } = useLeads(filters);
 
-  const groups = useMemo(() => {
+  const { highPriorityLeads, groups } = useMemo(() => {
     const sorted = [...leads].sort(
       (a, b) => qualityRank(a.leadQuality) - qualityRank(b.leadQuality)
     );
+    const highPriorityLeads = sorted.filter((l) => l.highPriority);
+    const rest = sorted.filter((l) => !l.highPriority);
     const map = new Map();
-    for (const lead of sorted) {
+    for (const lead of rest) {
       const key = qualityGroupLabel(lead.leadQuality);
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(lead);
     }
-    return [...map.entries()];
+    return { highPriorityLeads, groups: [...map.entries()] };
   }, [leads]);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <NavBar />
+      <FilterBar />
 
       <div className="border-b border-line bg-surface px-4 py-3">
         <h2 className="text-sm font-semibold text-ink">Follow-up Prep</h2>
@@ -57,6 +63,7 @@ export default function FollowUpPage() {
           <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-line-strong bg-surface2 text-left text-xs font-medium uppercase tracking-wide text-ink-mute">
+                <th className={cellClass + " w-14"}>Priority</th>
                 <th className={cellClass + " w-40"}>Identified</th>
                 <th className={cellClass + " w-28"}>Platform</th>
                 <th className={cellClass + " w-64"}>Description</th>
@@ -65,6 +72,21 @@ export default function FollowUpPage() {
               </tr>
             </thead>
             <tbody>
+              {highPriorityLeads.length > 0 && (
+                <>
+                  <tr className="border-b border-line-strong bg-red-100 dark:bg-red-950">
+                    <td colSpan={6} className="px-2 py-1.5 text-xs font-semibold text-red-800 dark:text-red-300">
+                      ⭐ High Priority
+                      <span className="ml-2 font-normal text-red-700/80 dark:text-red-400/80">
+                        {highPriorityLeads.length} lead{highPriorityLeads.length > 1 ? "s" : ""}
+                      </span>
+                    </td>
+                  </tr>
+                  {highPriorityLeads.map((lead) => (
+                    <FollowUpRow key={lead.id} lead={lead} onUpdate={updateLead} />
+                  ))}
+                </>
+              )}
               {groups.map(([quality, groupLeads]) => (
                 <QualityGroup
                   key={quality}
@@ -85,7 +107,7 @@ function QualityGroup({ quality, leads, onUpdate }) {
   return (
     <>
       <tr className="border-b border-line-strong bg-brand/10">
-        <td colSpan={5} className="px-2 py-1.5 text-xs font-semibold text-brand-strong">
+        <td colSpan={6} className="px-2 py-1.5 text-xs font-semibold text-brand-strong">
           <span
             className={`mr-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
               QUALITY_COLOR[quality] || "bg-surface2 text-ink-soft"
@@ -124,6 +146,16 @@ function FollowUpRow({ lead, onUpdate }) {
 
   return (
     <tr className="border-b border-line align-top hover:bg-surface2/60">
+      <td className={cellClass + " text-center"}>
+        <input
+          type="checkbox"
+          checked={!!lead.highPriority}
+          onChange={(e) => onUpdate(lead.id, { highPriority: e.target.checked })}
+          title="Mark high priority — pins this lead to the top of Follow-up"
+          className="h-4 w-4 accent-red-600"
+        />
+      </td>
+
       <td className={cellClass}>{lead.identified}</td>
 
       <td className={cellClass}>
