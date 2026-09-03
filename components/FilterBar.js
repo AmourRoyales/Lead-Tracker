@@ -11,7 +11,7 @@ import { EMPTY_FILTERS, useFilters } from "@/lib/FilterContext";
 // Filters live in shared context (see FilterContext) so a filter set on one
 // page — e.g. Platform — stays applied when you navigate to another page.
 export default function FilterBar({ onAddLead }) {
-  const { filters, setFilters } = useFilters();
+  const { filters, setFilters, adIds } = useFilters();
 
   function set(key, value) {
     setFilters((f) => ({ ...f, [key]: value }));
@@ -84,6 +84,20 @@ export default function FilterBar({ onAddLead }) {
           <option value="">All</option>
           {PLATFORM_OPTIONS.map((o) => (
             <option key={o} value={o}>{o}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-ink-mute">Ad ID</label>
+        <select
+          value={filters.adId}
+          onChange={(e) => set("adId", e.target.value)}
+          className="rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
+        >
+          <option value="">All</option>
+          {adIds.map((id) => (
+            <option key={id} value={id}>{id}</option>
           ))}
         </select>
       </div>
