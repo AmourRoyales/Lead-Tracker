@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  CONVERSATION_STAGE_OPTIONS,
+  CONVERSATION_STAGE_NONE,
+  CONVERSATION_STAGE_SELECT_OPTIONS,
   HIGH_PRIORITY_STATUSES,
   LEAD_QUALITY_CUSTOM,
   LEAD_QUALITY_OPTIONS,
@@ -117,17 +118,17 @@ function RowsForDate({ group, onUpdate, onDelete, showStage, colCount, onDetailE
 }
 
 function StageCell({ lead, onUpdate }) {
-  const stage = lead.conversationStage || CONVERSATION_STAGE_OPTIONS[0];
+  const stage = lead.conversationStage || CONVERSATION_STAGE_NONE;
   return (
     <select
       value={stage}
       onChange={(e) => onUpdate(lead.id, { conversationStage: e.target.value })}
-      title="Bump this lead to a different conversation stage"
+      title="Bump this lead to a different conversation stage, or take it out of all of them"
       className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${
         STAGE_COLOR[stage] || "bg-surface2 text-ink-soft"
       }`}
     >
-      {CONVERSATION_STAGE_OPTIONS.map((o) => (
+      {CONVERSATION_STAGE_SELECT_OPTIONS.map((o) => (
         <option key={o} value={o}>{o}</option>
       ))}
     </select>

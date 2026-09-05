@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CONVERSATION_STAGE_OPTIONS,
+  CONVERSATION_STAGE_SELECT_OPTIONS,
   LEAD_QUALITY_OPTIONS,
   LEAD_QUALITY_CUSTOM,
   PLATFORM_OPTIONS,
@@ -551,7 +552,7 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
           <div>
             <label className="mb-1 block text-sm font-medium text-ink">Conversation Stage</label>
             <div className="flex flex-wrap gap-2">
-              {CONVERSATION_STAGE_OPTIONS.map((s) => (
+              {CONVERSATION_STAGE_SELECT_OPTIONS.map((s) => (
                 <button
                   type="button"
                   key={s}
@@ -571,7 +572,12 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
             </div>
             <p className="mt-1 text-xs text-ink-mute">
               Defaults to First Message — bump it up if the conversation has already gone
-              further. Shown on its own page under{" "}
+              further. Pick{" "}
+              <span className={`rounded-full px-1.5 py-0.5 font-medium ${STAGE_COLOR[CONVERSATION_STAGE_SELECT_OPTIONS[0]]}`}>
+                {CONVERSATION_STAGE_SELECT_OPTIONS[0]}
+              </span>{" "}
+              to leave it off all four stage pages entirely. Otherwise it's shown on its own
+              page under{" "}
               <span className={`rounded-full px-1.5 py-0.5 font-medium ${STAGE_COLOR[form.conversationStage] || ""}`}>
                 {form.conversationStage}
               </span>
