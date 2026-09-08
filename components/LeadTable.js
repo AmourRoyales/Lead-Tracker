@@ -13,7 +13,7 @@ import {
   PRODUCT_OTHER,
   statusOptionsFor,
 } from "@/lib/constants";
-import { daysSinceIST, formatDateLabel } from "@/lib/date";
+import { daysSinceIST, formatDateLabel, formatTimeLabel } from "@/lib/date";
 import { PLATFORM_COLOR, QUALITY_COLOR, STAGE_COLOR, STATUS_COLOR } from "@/lib/badgeColors";
 import AddLeadModal from "@/components/AddLeadModal";
 
@@ -152,7 +152,7 @@ function statusLabel(lead) {
 export function lastMessageInfo(lead) {
   if (!lead.lastMessageDate) return null;
   const days = daysSinceIST(lead.lastMessageDate);
-  return { date: lead.lastMessageDate, days };
+  return { date: lead.lastMessageDate, days, time: lead.lastMessageTime || null };
 }
 
 function DescriptionPopover({ lead, onClose, anchor }) {
@@ -255,9 +255,15 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
       <tr className="border-b border-line hover:bg-surface2/60">
         <td className={cellClass}>
           <div>{lead.identified}</div>
-          {lead.adId && (
-            <div className="text-xs text-ink-mute" title="Ad ID">
-              Ad: {lead.adId}
+          {(lead.leadTime || lead.adId) && (
+            <div className="text-xs text-ink-mute">
+              {lead.leadTime && (
+                <span title="Time the lead first messaged">
+                  {formatTimeLabel(lead.leadTime)}
+                </span>
+              )}
+              {lead.leadTime && lead.adId && " · "}
+              {lead.adId && <span title="Ad ID">Ad: {lead.adId}</span>}
             </div>
           )}
         </td>
@@ -308,9 +314,14 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
             const info = lastMessageInfo(lead);
             if (!info) return <span className="text-ink-mute">—</span>;
             return (
-              <span className={info.days >= 3 ? "font-medium text-red-700 dark:text-red-400" : "text-ink"}>
-                {info.days === 0 ? "Today" : `${info.days}d ago`}
-              </span>
+              <>
+                <span className={info.days >= 3 ? "font-medium text-red-700 dark:text-red-400" : "text-ink"}>
+                  {info.days === 0 ? "Today" : `${info.days}d ago`}
+                </span>
+                {info.time && (
+                  <div className="text-xs text-ink-mute">{formatTimeLabel(info.time)}</div>
+                )}
+              </>
             );
           })()}
         </td>
@@ -488,6 +499,16 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
           onBlur={(e) =>
             e.target.value !== (lead.lastMessageDate || "") &&
             patch({ lastMessageDate: e.target.value || null })
+          }
+        />
+        <input
+          type="time"
+          className={inputClass}
+          defaultValue={lead.lastMessageTime || ""}
+          title="Time of the last message"
+          onBlur={(e) =>
+            e.target.value !== (lead.lastMessageTime || "") &&
+            patch({ lastMessageTime: e.target.value || null })
           }
         />
       </td>

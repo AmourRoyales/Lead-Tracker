@@ -6,7 +6,7 @@ import FilterBar from "@/components/FilterBar";
 import { DescriptionCell, lastMessageInfo } from "@/components/LeadTable";
 import { useLeads } from "@/lib/useLeads";
 import { useFilters } from "@/lib/FilterContext";
-import { todayIST } from "@/lib/date";
+import { formatTimeLabel, nowTimeIST, todayIST } from "@/lib/date";
 import { PLATFORM_COLOR, QUALITY_COLOR } from "@/lib/badgeColors";
 import { LEAD_QUALITY_OPTIONS } from "@/lib/constants";
 
@@ -140,7 +140,11 @@ function FollowUpRow({ lead, onUpdate }) {
   }
 
   async function handleMarkDone() {
-    await onUpdate(lead.id, { lastMessageDate: todayIST(), followUpMessage: "" });
+    await onUpdate(lead.id, {
+      lastMessageDate: todayIST(),
+      lastMessageTime: nowTimeIST(),
+      followUpMessage: "",
+    });
     setMessage("");
   }
 
@@ -178,9 +182,14 @@ function FollowUpRow({ lead, onUpdate }) {
 
       <td className={cellClass}>
         {info ? (
-          <span className={info.days >= 3 ? "font-medium text-red-700 dark:text-red-400" : "text-ink"}>
-            {info.days === 0 ? "Today" : `${info.days}d ago`}
-          </span>
+          <>
+            <span className={info.days >= 3 ? "font-medium text-red-700 dark:text-red-400" : "text-ink"}>
+              {info.days === 0 ? "Today" : `${info.days}d ago`}
+            </span>
+            {info.time && (
+              <div className="text-xs text-ink-mute">{formatTimeLabel(info.time)}</div>
+            )}
+          </>
         ) : (
           <span className="text-ink-mute">—</span>
         )}

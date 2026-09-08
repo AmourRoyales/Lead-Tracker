@@ -44,7 +44,9 @@ const emptyForm = {
   leadQuality: LEAD_QUALITY_OPTIONS[0],
   leadQualityCustom: "",
   leadDate: todayLocal(),
+  leadTime: "",
   lastMessageDate: todayLocal(),
+  lastMessageTime: "",
   product: PRODUCT_OPTIONS[0],
   productCustom: "",
   isNatural: false,
@@ -66,7 +68,9 @@ function formFromLead(lead) {
     leadQuality: lead.leadQuality || LEAD_QUALITY_OPTIONS[0],
     leadQualityCustom: lead.leadQualityCustom || "",
     leadDate: lead.leadDate || todayLocal(),
+    leadTime: lead.leadTime || "",
     lastMessageDate: lead.lastMessageDate || todayLocal(),
+    lastMessageTime: lead.lastMessageTime || "",
     product: lead.product || PRODUCT_OPTIONS[0],
     productCustom: lead.productCustom || "",
     isNatural: !!lead.isNatural,
@@ -101,7 +105,9 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
   const [submitError, setSubmitError] = useState(null);
   const dupTimer = useRef(null);
   const dateTouched = useRef(false);
+  const timeTouched = useRef(false);
   const lastMessageDateTouched = useRef(false);
+  const lastMessageTimeTouched = useRef(false);
   const leadQualityTouched = useRef(false);
   const productTouched = useRef(false);
   const isNaturalTouched = useRef(false);
@@ -201,10 +207,15 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
         description: data.description || f.description,
         descriptionSource: "gemini",
         leadDate: !dateTouched.current && data.suggestedDate ? data.suggestedDate : f.leadDate,
+        leadTime: !timeTouched.current && data.suggestedTime ? data.suggestedTime : f.leadTime,
         lastMessageDate:
           !lastMessageDateTouched.current && data.suggestedLastMessageDate
             ? data.suggestedLastMessageDate
             : f.lastMessageDate,
+        lastMessageTime:
+          !lastMessageTimeTouched.current && data.suggestedLastMessageTime
+            ? data.suggestedLastMessageTime
+            : f.lastMessageTime,
         identified: !f.identified.trim() && data.suggestedIdentified ? data.suggestedIdentified : f.identified,
         leadQuality:
           !leadQualityTouched.current && data.suggestedLeadQuality
@@ -418,6 +429,16 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                 }}
                 className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
               />
+              <input
+                type="time"
+                value={form.leadTime}
+                onChange={(e) => {
+                  timeTouched.current = true;
+                  set("leadTime", e.target.value);
+                }}
+                title="Time the lead first messaged"
+                className="mt-2 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Last Message Sent</label>
@@ -429,6 +450,16 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                   set("lastMessageDate", e.target.value);
                 }}
                 className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
+              />
+              <input
+                type="time"
+                value={form.lastMessageTime}
+                onChange={(e) => {
+                  lastMessageTimeTouched.current = true;
+                  set("lastMessageTime", e.target.value);
+                }}
+                title="Time of the last message in the conversation"
+                className="mt-2 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
