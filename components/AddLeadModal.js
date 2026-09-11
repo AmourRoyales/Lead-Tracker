@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  CLOSED_FOR_NOW_STATUS,
   CONVERSATION_STAGE_OPTIONS,
   CONVERSATION_STAGE_SELECT_OPTIONS,
   LEAD_QUALITY_OPTIONS,
+  QUALITY_LEADS_STAGE,
   LEAD_QUALITY_CUSTOM,
   PLATFORM_OPTIONS,
   PRODUCT_OPTIONS,
@@ -470,7 +472,7 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                   leadQualityTouched.current = true;
                   const quality = e.target.value;
                   setForm((f) => {
-                    const validStatuses = statusOptionsFor(quality);
+                    const validStatuses = statusOptionsFor(quality, f.conversationStage);
                     const status = validStatuses.includes(f.status) ? f.status : validStatuses[0];
                     return { ...f, leadQuality: quality, status };
                   });
@@ -563,7 +565,7 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                 }}
                 className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
               >
-                {statusOptionsFor(form.leadQuality).map((o) => (
+                {statusOptionsFor(form.leadQuality, form.conversationStage).map((o) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
                 <option value="Custom">Custom…</option>
@@ -589,7 +591,15 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                   key={s}
                   onClick={() => {
                     stageTouched.current = true;
-                    set("conversationStage", s);
+                    setForm((f) => ({
+                      ...f,
+                      conversationStage: s,
+                      // "Closed for now" is a Quality Leads-only status, so
+                      // don't leave it stuck on a lead moved out of that stage.
+                      ...(f.status === CLOSED_FOR_NOW_STATUS && s !== QUALITY_LEADS_STAGE
+                        ? { status: "Follow-up Needed" }
+                        : {}),
+                    }));
                   }}
                   className={`rounded-full border px-3 py-1 text-xs font-medium ${
                     form.conversationStage === s

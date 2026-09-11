@@ -11,16 +11,23 @@ import { useFilters } from "@/lib/FilterContext";
 // currently at that stage, with a Stage dropdown on every row so a lead can
 // be bumped straight to any other stage — once bumped away, it drops out of
 // this page's list since it no longer matches the filter.
-export default function StagePage({ stage, title, description }) {
+// `excludeStatus` optionally hides leads parked at a given status (used by
+// /quality-leads for "Closed for now").
+export default function StagePage({ stage, title, description, excludeStatus }) {
   const { filters } = useFilters();
   const { leads, setLeads, loading, error, updateLead, removeLead } = useLeads({
     ...filters,
     conversationStage: stage,
+    ...(excludeStatus && { excludeStatus }),
   });
 
   async function handleUpdate(id, fields) {
     await updateLead(id, fields);
-    if (fields.conversationStage && fields.conversationStage !== stage) {
+    // Drop the row straight out of view once it no longer belongs on this page
+    // — either bumped to another stage, or parked at the excluded status.
+    const movedStage = fields.conversationStage && fields.conversationStage !== stage;
+    const nowExcluded = excludeStatus && fields.status === excludeStatus;
+    if (movedStage || nowExcluded) {
       setLeads((prev) => prev.filter((l) => l.id !== id));
     }
   }

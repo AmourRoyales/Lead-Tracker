@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CLOSED_FOR_NOW_STATUS,
   LEAD_QUALITY_OPTIONS,
   PLATFORM_OPTIONS,
   PRODUCT_OPTIONS,
@@ -40,6 +41,9 @@ export default function FilterBar({ onAddLead }) {
           {STATUS_OPTIONS.map((o) => (
             <option key={o} value={o}>{o}</option>
           ))}
+          {/* Only assignable on Quality Leads, but filterable anywhere so
+              parked leads can still be found. */}
+          <option value={CLOSED_FOR_NOW_STATUS}>{CLOSED_FOR_NOW_STATUS}</option>
           <option value="Custom">Custom</option>
         </select>
       </div>

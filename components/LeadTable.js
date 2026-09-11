@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  CLOSED_FOR_NOW_STATUS,
   CONVERSATION_STAGE_NONE,
   CONVERSATION_STAGE_SELECT_OPTIONS,
   HIGH_PRIORITY_STATUSES,
+  QUALITY_LEADS_STAGE,
   LEAD_QUALITY_CUSTOM,
   LEAD_QUALITY_OPTIONS,
   PLATFORM_OPTIONS,
@@ -119,10 +121,23 @@ function RowsForDate({ group, onUpdate, onDelete, showStage, colCount, onDetailE
 
 function StageCell({ lead, onUpdate }) {
   const stage = lead.conversationStage || CONVERSATION_STAGE_NONE;
+
+  function changeStage(nextStage) {
+    const fields = { conversationStage: nextStage };
+    // "Closed for now" only exists inside the Quality Leads stage. Bumping a
+    // parked lead out of that stage means it's live again, so hand it back as
+    // something actionable rather than leaving it on a status no dropdown
+    // outside Quality Leads can even show.
+    if (lead.status === CLOSED_FOR_NOW_STATUS && nextStage !== QUALITY_LEADS_STAGE) {
+      fields.status = "Follow-up Needed";
+    }
+    onUpdate(lead.id, fields);
+  }
+
   return (
     <select
       value={stage}
-      onChange={(e) => onUpdate(lead.id, { conversationStage: e.target.value })}
+      onChange={(e) => changeStage(e.target.value)}
       title="Bump this lead to a different conversation stage, or take it out of all of them"
       className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${
         STAGE_COLOR[stage] || "bg-surface2 text-ink-soft"
@@ -417,7 +432,7 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
           value={lead.leadQuality}
           onChange={(e) => {
             const quality = e.target.value;
-            const validStatuses = statusOptionsFor(quality);
+            const validStatuses = statusOptionsFor(quality, lead.conversationStage);
             const fields = { leadQuality: quality };
             if (!validStatuses.includes(lead.status)) fields.status = validStatuses[0];
             patch(fields);
@@ -519,7 +534,7 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
           value={lead.status}
           onChange={(e) => patch({ status: e.target.value })}
         >
-          {statusOptionsFor(lead.leadQuality).map((o) => (
+          {statusOptionsFor(lead.leadQuality, lead.conversationStage).map((o) => (
             <option key={o} value={o}>{o}</option>
           ))}
           <option value="Custom">Custom…</option>
