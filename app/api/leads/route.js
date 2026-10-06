@@ -13,10 +13,12 @@ export async function GET(request) {
     product: searchParams.get("product") || undefined,
     platform: searchParams.get("platform") || undefined,
     naturalOnly: searchParams.get("naturalOnly") || undefined,
+    b2bOnly: searchParams.get("b2bOnly") || undefined,
     noQuote: searchParams.get("noQuote") || undefined,
     dateFrom: searchParams.get("dateFrom") || undefined,
     dateTo: searchParams.get("dateTo") || undefined,
     search: searchParams.get("search") || undefined,
+    sort: searchParams.get("sort") || undefined,
   };
   try {
     const leads = await listLeads(filters);

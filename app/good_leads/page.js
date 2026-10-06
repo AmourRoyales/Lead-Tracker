@@ -51,6 +51,9 @@ export default function GoodLeadsPage() {
         <p className="px-4 py-6 text-sm text-ink-mute">Loading…</p>
       ) : leads.length === 0 ? (
         <div className="p-10 text-center text-sm text-ink-mute">No good leads yet.</div>
+      ) : filters.sort ? (
+        // Month sections are by lead date, which would break a last-message sort.
+        <LeadTable leads={leads} onUpdate={updateLead} onDelete={removeLead} />
       ) : (
         monthGroups.map(([key, monthLeads]) => (
           <div key={key}>

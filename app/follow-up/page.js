@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import NavBar from "@/components/NavBar";
 import FilterBar from "@/components/FilterBar";
-import { DescriptionCell, lastMessageInfo } from "@/components/LeadTable";
+import { B2BTag, DescriptionCell, lastMessageInfo } from "@/components/LeadTable";
 import { useLeads } from "@/lib/useLeads";
 import { useFilters } from "@/lib/FilterContext";
 import { formatTimeLabel, nowTimeIST, todayIST } from "@/lib/date";
@@ -160,7 +160,12 @@ function FollowUpRow({ lead, onUpdate }) {
         />
       </td>
 
-      <td className={cellClass}>{lead.identified}</td>
+      <td className={cellClass}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span>{lead.identified}</span>
+          {lead.isB2B && <B2BTag />}
+        </div>
+      </td>
 
       <td className={cellClass}>
         {lead.platform ? (

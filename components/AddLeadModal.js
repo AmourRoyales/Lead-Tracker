@@ -15,6 +15,7 @@ import {
   statusOptionsFor,
 } from "@/lib/constants";
 import { STAGE_COLOR } from "@/lib/badgeColors";
+import TimePicker from "@/components/TimePicker";
 
 function todayLocal() {
   const d = new Date();
@@ -52,6 +53,7 @@ const emptyForm = {
   product: PRODUCT_OPTIONS[0],
   productCustom: "",
   isNatural: false,
+  isB2B: false,
   quote: "",
   status: STATUS_OPTIONS[0],
   statusCustom: "",
@@ -76,6 +78,7 @@ function formFromLead(lead) {
     product: lead.product || PRODUCT_OPTIONS[0],
     productCustom: lead.productCustom || "",
     isNatural: !!lead.isNatural,
+    isB2B: !!lead.isB2B,
     quote: lead.quote != null ? String(lead.quote) : "",
     status: lead.status || STATUS_OPTIONS[0],
     statusCustom: lead.statusCustom || "",
@@ -89,7 +92,7 @@ function formFromLead(lead) {
 // calls onCreated) and as the "detailed edit" view for an existing lead
 // (pass `lead` + `onUpdate` — the same update function the inline row edit
 // uses, so both paths go through identical persistence logic).
-export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
+export default function AddLeadModal({ onClose, onCreated, lead, onUpdate, onDelete }) {
   const isEdit = !!lead;
   const [form, setForm] = useState(() =>
     isEdit
@@ -113,6 +116,7 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
   const leadQualityTouched = useRef(false);
   const productTouched = useRef(false);
   const isNaturalTouched = useRef(false);
+  const isB2BTouched = useRef(false);
   const statusTouched = useRef(false);
   const quoteTouched = useRef(false);
   const stageTouched = useRef(false);
@@ -231,6 +235,10 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
           !isNaturalTouched.current && data.suggestedIsNatural != null
             ? data.suggestedIsNatural
             : f.isNatural,
+        isB2B:
+          !isB2BTouched.current && data.suggestedIsB2B != null
+            ? data.suggestedIsB2B
+            : f.isB2B,
         status:
           !statusTouched.current && data.suggestedStatus ? data.suggestedStatus : f.status,
         quote:
@@ -453,15 +461,16 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                 }}
                 className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
               />
-              <input
-                type="time"
+              {/* Opens on the current time; only an actual hour/minute/am-pm
+                  click changes the value, clicking away keeps the old one. */}
+              <TimePicker
                 value={form.lastMessageTime}
-                onChange={(e) => {
+                onChange={(v) => {
                   lastMessageTimeTouched.current = true;
-                  set("lastMessageTime", e.target.value);
+                  set("lastMessageTime", v);
                 }}
                 title="Time of the last message in the conversation"
-                className="mt-2 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
+                className="mt-2"
               />
             </div>
             <div>
@@ -535,6 +544,17 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
                 }}
               />
               Natural diamond
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={form.isB2B}
+                onChange={(e) => {
+                  isB2BTouched.current = true;
+                  set("isB2B", e.target.checked);
+                }}
+              />
+              B2B — wholesale / reseller / business buyer
             </label>
           </div>
 
@@ -655,6 +675,21 @@ export default function AddLeadModal({ onClose, onCreated, lead, onUpdate }) {
           {submitError && <p className="text-sm text-red-600">{submitError}</p>}
 
           <div className="flex justify-end gap-2 border-t border-line pt-4">
+            {/* Only offered when the caller passes onDelete (edit mode). */}
+            {isEdit && onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Delete lead "${lead.identified}"?`)) {
+                    onDelete(lead.id);
+                    onClose();
+                  }
+                }}
+                className="mr-auto rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+              >
+                Delete
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

@@ -18,6 +18,7 @@ import {
 import { daysSinceIST, formatDateLabel, formatTimeLabel } from "@/lib/date";
 import { PLATFORM_COLOR, QUALITY_COLOR, STAGE_COLOR, STATUS_COLOR } from "@/lib/badgeColors";
 import AddLeadModal from "@/components/AddLeadModal";
+import { useFilters } from "@/lib/FilterContext";
 
 const cellClass =
   "border-r border-line px-2 py-1.5 align-top last:border-r-0";
@@ -39,6 +40,11 @@ function groupByDate(leads) {
 }
 
 export default function LeadTable({ leads, onUpdate, onDelete, showStage = false }) {
+  // Sorting by last message cuts across lead dates, so grouping rows under
+  // lead-date headers would scatter the order. Show one flat list instead,
+  // with each lead's own date moved into its row.
+  const { filters } = useFilters();
+  const flat = !!filters.sort;
   const groups = groupByDate(leads);
   const colCount = showStage ? 10 : 9;
   const [detailLead, setDetailLead] = useState(null);
@@ -69,17 +75,29 @@ export default function LeadTable({ leads, onUpdate, onDelete, showStage = false
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => (
-            <RowsForDate
-              key={group.date}
-              group={group}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              showStage={showStage}
-              colCount={colCount}
-              onDetailEdit={setDetailLead}
-            />
-          ))}
+          {flat
+            ? leads.map((lead) => (
+                <LeadRow
+                  key={lead.id}
+                  lead={lead}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  showStage={showStage}
+                  onDetailEdit={setDetailLead}
+                  showLeadDate
+                />
+              ))
+            : groups.map((group) => (
+                <RowsForDate
+                  key={group.date}
+                  group={group}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  showStage={showStage}
+                  colCount={colCount}
+                  onDetailEdit={setDetailLead}
+                />
+              ))}
         </tbody>
       </table>
 
@@ -258,7 +276,18 @@ function DeleteButton({ lead, onDelete }) {
   );
 }
 
-function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
+export function B2BTag() {
+  return (
+    <span
+      title="B2B — wholesale / reseller / business buyer"
+      className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300"
+    >
+      B2B
+    </span>
+  );
+}
+
+function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit, showLeadDate = false }) {
   const [editing, setEditing] = useState(false);
 
   function patch(fields) {
@@ -269,15 +298,21 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
     return (
       <tr className="border-b border-line hover:bg-surface2/60">
         <td className={cellClass}>
-          <div>{lead.identified}</div>
-          {(lead.leadTime || lead.adId) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span>{lead.identified}</span>
+            {lead.isB2B && <B2BTag />}
+          </div>
+          {((showLeadDate && lead.leadDate) || lead.leadTime || lead.adId) && (
             <div className="text-xs text-ink-mute">
+              {showLeadDate && lead.leadDate && (
+                <span title="Lead date">{formatDateLabel(lead.leadDate)} </span>
+              )}
               {lead.leadTime && (
                 <span title="Time the lead first messaged">
                   {formatTimeLabel(lead.leadTime)}
                 </span>
               )}
-              {lead.leadTime && lead.adId && " · "}
+              {(lead.leadTime || (showLeadDate && lead.leadDate)) && lead.adId && " · "}
               {lead.adId && <span title="Ad ID">Ad: {lead.adId}</span>}
             </div>
           )}
@@ -400,6 +435,14 @@ function LeadRow({ lead, onUpdate, onDelete, showStage, onDetailEdit }) {
           placeholder="Ad ID"
           onBlur={(e) => e.target.value !== (lead.adId || "") && patch({ adId: e.target.value })}
         />
+        <label className="mt-1 flex items-center gap-1.5 text-xs">
+          <input
+            type="checkbox"
+            checked={!!lead.isB2B}
+            onChange={(e) => patch({ isB2B: e.target.checked })}
+          />
+          {lead.isB2B ? <B2BTag /> : <span className="text-ink-mute">B2B?</span>}
+        </label>
       </td>
 
       <td className={cellClass}>

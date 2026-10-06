@@ -5,20 +5,38 @@ import {
   LEAD_QUALITY_OPTIONS,
   PLATFORM_OPTIONS,
   PRODUCT_OPTIONS,
+  SORT_LAST_MSG_NEWEST,
+  SORT_LAST_MSG_OLDEST,
   STATUS_OPTIONS,
 } from "@/lib/constants";
 import { EMPTY_FILTERS, useFilters } from "@/lib/FilterContext";
+import { useStoredValue } from "@/lib/useStoredValue";
+
+const COLLAPSED_KEY = "filterBar.collapsed";
 
 // Filters live in shared context (see FilterContext) so a filter set on one
 // page — e.g. Platform — stays applied when you navigate to another page.
-export default function FilterBar({ onAddLead }) {
+// `collapsible` adds a toggle row that hides the filters behind a
+// "Filters (N active)" header; the open/closed choice is remembered per browser.
+export default function FilterBar({ onAddLead, collapsible = false }) {
   const { filters, setFilters, adIds } = useFilters();
+  // Collapsed unless the viewer explicitly opened it before.
+  const [storedCollapsed, setStoredCollapsed] = useStoredValue(COLLAPSED_KEY);
+  const collapsed = collapsible && storedCollapsed !== "0";
 
   function set(key, value) {
     setFilters((f) => ({ ...f, [key]: value }));
   }
 
-  return (
+  function toggleCollapsed() {
+    setStoredCollapsed(collapsed ? "0" : "1");
+  }
+
+  const activeCount = Object.keys(EMPTY_FILTERS).filter(
+    (k) => filters[k] !== EMPTY_FILTERS[k]
+  ).length;
+
+  const bar = collapsed ? null : (
     <div className="flex flex-wrap items-end gap-3 border-b border-line bg-surface px-4 py-3">
       <div>
         <label className="mb-1 block text-xs font-medium text-ink-mute">Search</label>
@@ -115,6 +133,15 @@ export default function FilterBar({ onAddLead }) {
         Natural only
       </label>
 
+      <label className="flex items-center gap-1.5 pb-1.5 text-sm text-ink-soft">
+        <input
+          type="checkbox"
+          checked={filters.b2bOnly}
+          onChange={(e) => set("b2bOnly", e.target.checked)}
+        />
+        B2B only
+      </label>
+
       <div className="flex items-end gap-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-mute">From</label>
@@ -136,6 +163,19 @@ export default function FilterBar({ onAddLead }) {
         </div>
       </div>
 
+      <div>
+        <label className="mb-1 block text-xs font-medium text-ink-mute">Sort</label>
+        <select
+          value={filters.sort}
+          onChange={(e) => set("sort", e.target.value)}
+          className="rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink"
+        >
+          <option value="">Default (lead date)</option>
+          <option value={SORT_LAST_MSG_OLDEST}>Last msg ↓ (9d ago → 6d ago)</option>
+          <option value={SORT_LAST_MSG_NEWEST}>Last msg ↑ (6d ago → 9d ago)</option>
+        </select>
+      </div>
+
       <button
         type="button"
         onClick={() => setFilters(EMPTY_FILTERS)}
@@ -154,5 +194,27 @@ export default function FilterBar({ onAddLead }) {
         </button>
       )}
     </div>
+  );
+
+  if (!collapsible) return bar;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-expanded={!collapsed}
+        className="flex w-full items-center gap-2 border-b border-line bg-surface px-4 py-2 text-left text-sm font-medium text-ink-soft hover:bg-surface2"
+      >
+        <span className={`inline-block text-xs transition-transform ${collapsed ? "" : "rotate-90"}`}>▶</span>
+        Filters
+        {activeCount > 0 && (
+          <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
+            {activeCount} active
+          </span>
+        )}
+      </button>
+      {bar}
+    </>
   );
 }
